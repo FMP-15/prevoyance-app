@@ -1,9 +1,10 @@
 import streamlit as st
 import plotly.graph_objects as go
+from datetime import datetime
 
 # --- PAGE SETUP ---
 st.set_page_config(page_title="Calculateur de Prévoyance", layout="centered")
-st.title("🧮 Calculateur de prévoyance suisse")
+st.title("📊 Calculateur de prévoyance suisse")
 st.write("Ce simulateur estime les prestations en cas d'invalidité, décès ou retraite.")
 
 # --- INPUTS ---
@@ -18,6 +19,13 @@ cas = st.selectbox("Cas à simuler", ["Invalidité - Maladie", "Invalidité - Ac
 besoin_percent = st.slider("Quel pourcentage du revenu souhaitez-vous maintenir ?", 50, 100, 90)
 besoin_client = salaire * besoin_percent / 100
 
+# Calcul des années jusqu'à la retraite
+age_retraite = 65
+annee_courante = datetime.now().year
+age_actuel = st.slider("Votre âge actuel", min_value=18, max_value=64, value=40)
+nb_annees_restantes = age_retraite - age_actuel
+liste_annees = list(range(annee_courante, annee_courante + nb_annees_restantes))
+
 # --- FONCTIONS AUXILIAIRES ---
 def calcul_rente_ai_pilier1(salaire):
     if salaire <= 14100:
@@ -25,12 +33,12 @@ def calcul_rente_ai_pilier1(salaire):
     elif salaire <= 28200:
         return 14100
     elif salaire <= 84600:
-        return salaire * 0.35  # approximation
+        return salaire * 0.35
     else:
-        return 29400  # rente AI max échelle 44
+        return 29400
 
 def rente_avs_standard():
-    return 30240  # rente AVS individuelle maximale mise à jour 2025  # rente AVS individuelle maximale
+    return 30240
 
 # --- CALCUL DES PRESTATIONS SELON LE CAS ---
 def calcul_prestations():
@@ -50,11 +58,10 @@ def calcul_prestations():
 
     elif cas == "Décès - Maladie":
         rente_avs_deces = rente_avs_standard()
-        rente_avs = 0  # pas versée directement au conjoint mais base pour calcul
-
+        rente_avs = 0
         rente_enfant = enfants * (rente_avs_deces * 0.4)
         if situation == "Marié(e)":
-            rente_veuve = rente_avs_deces * 0.8  # si conditions remplies (avec enfant ou +45 ans)
+            rente_veuve = rente_avs_deces * 0.8
 
         if certificat_lpp:
             rente_veuve += st.number_input("Rente de veuve LPP (CHF)", value=12000)
@@ -67,9 +74,7 @@ def calcul_prestations():
     elif cas == "Décès - Accident":
         rente_avs_deces = rente_avs_standard()
         salaire_assure = min(salaire, 148200)
-
         rente_enfant = enfants * (salaire_assure * 0.15 + rente_avs_deces * 0.4)
-
         if situation == "Marié(e)":
             rente_veuve = salaire_assure * 0.4 + rente_avs_deces * 0.8
 
@@ -99,42 +104,28 @@ st.metric("Besoin du client", f"CHF {besoin_client:,.0f}")
 st.metric("Prestations estimées", f"CHF {total_prestations:,.0f}")
 st.metric("Lacune de couverture", f"CHF {lacune:,.0f}", delta_color="inverse")
 
-# --- GRAPHIQUE ---
-st.header("3️⃣ Visualisation graphique")
+# --- NOUVEAU GRAPHIQUE ANNUEL ---
+st.header("3️⃣ Visualisation graphique annuelle jusqu'à la retraite")
+
+y_ai = [rente_ai_p1] * nb_annees_restantes
+y_lpp = [rente_lpp] * nb_annees_restantes
+y_lacune = [max(0, besoin_client - (rente_ai_p1 + rente_lpp))] * nb_annees_restantes
+y_total = [besoin_client] * nb_annees_restantes
 
 fig = go.Figure()
-
-if cas == "Invalidité - Maladie":
-    fig.add_trace(go.Bar(name='AI (1er pilier)', x=['Invalidité - Maladie'], y=[rente_ai_p1]))
-    fig.add_trace(go.Bar(name='LPP (2e pilier)', x=['Invalidité - Maladie'], y=[rente_lpp]))
-    fig.add_trace(go.Bar(name='Enfants (AI)', x=['Invalidité - Maladie'], y=[rente_enfant]))
-
-elif cas == "Invalidité - Accident":
-    fig.add_trace(go.Bar(name='AI (1er pilier)', x=['Invalidité - Accident'], y=[rente_ai_p1]))
-    fig.add_trace(go.Bar(name='LPP (2e pilier)', x=['Invalidité - Accident'], y=[rente_lpp]))
-    fig.add_trace(go.Bar(name='LAA (enfants)', x=['Invalidité - Accident'], y=[rente_enfant]))
-
-elif cas == "Décès - Maladie":
-    fig.add_trace(go.Bar(name='Rente de veuve (AVS + LPP)', x=['Décès - Maladie'], y=[rente_veuve]))
-    fig.add_trace(go.Bar(name='Rente enfants (AVS + LPP)', x=['Décès - Maladie'], y=[rente_enfant]))
-
-elif cas == "Décès - Accident":
-    fig.add_trace(go.Bar(name='Rente de veuve (LAA + AVS + LPP)', x=['Décès - Accident'], y=[rente_veuve]))
-    fig.add_trace(go.Bar(name='Rente enfants (LAA + AVS + LPP)', x=['Décès - Accident'], y=[rente_enfant]))
-
-elif cas == "Vieillesse":
-    fig.add_trace(go.Bar(name='AVS', x=['Vieillesse'], y=[rente_avs]))
-    fig.add_trace(go.Bar(name='LPP', x=['Vieillesse'], y=[rente_lpp]))
-
-fig.add_trace(go.Bar(name='Lacune', x=[cas], y=[lacune]))
-fig.add_trace(go.Bar(name='Besoin total', x=[cas], y=[besoin_client]))
+fig.add_trace(go.Bar(name="AI (1er pilier)", x=liste_annees, y=y_ai))
+fig.add_trace(go.Bar(name="LPP (2e pilier)", x=liste_annees, y=y_lpp))
+fig.add_trace(go.Bar(name="Lacune", x=liste_annees, y=y_lacune))
+fig.add_trace(go.Scatter(name="Besoin annuel", x=liste_annees, y=y_total, mode="lines", line=dict(color="black", dash="dash")))
 
 fig.update_layout(
     barmode='stack',
-    title='Répartition des prestations selon le cas',
-    yaxis_title='Montants annuels (CHF)',
-    legend_title='Sources de prestations',
+    title="Projection annuelle des rentes jusqu'à la retraite",
+    xaxis_title="Années",
+    yaxis_title="Montants annuels (CHF)",
+    legend_title="Sources de prestations"
 )
+
 st.plotly_chart(fig, use_container_width=True)
 
 # --- DÉTAIL DES COMPOSANTES ---
@@ -146,4 +137,4 @@ st.write(f"**Rente de veuve (AVS + LPP) :** CHF {rente_veuve:,.0f}")
 st.write(f"**Rente enfant (AVS + LPP) :** CHF {rente_enfant:,.0f}")
 
 # --- NOTE ---
-st.info("⚠️ Ce calculateur applique les barèmes RAMD, LPP, AVS, LAA de manière simplifiée. Pour une planification complète, veuillez consulter un conseiller en prévoyance.")
+st.info("\u26a0\ufe0f Ce calculateur applique les barèmes RAMD, LPP, AVS, LAA de manière simplifiée. Pour une planification complète, veuillez consulter un conseiller en prévoyance.")
