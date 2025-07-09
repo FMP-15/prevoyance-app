@@ -102,7 +102,6 @@ total_prestations, rente_ai_p1, rente_lpp, rente_avs, rente_veuve = calcul_prest
 today = date.today()
 annee_fin_rente_enfant = []
 for naissance in date_naissances:
-    age = annee_courante - naissance.year
     fin_age = 25 if enfants_en_formation else 18
     annee_fin = naissance.year + fin_age
     if annee_fin > annee_courante:
