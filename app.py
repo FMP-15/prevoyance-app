@@ -18,21 +18,32 @@ cas = st.selectbox("Cas à simuler", ["Invalidité - Maladie", "Invalidité - Ac
 besoin_percent = st.slider("Quel pourcentage du revenu souhaitez-vous maintenir ?", 50, 100, 90)
 besoin_client = salaire * besoin_percent / 100
 
+# --- FONCTIONS AUXILIAIRES ---
+def calcul_rente_ai_pilier1(salaire):
+    if salaire <= 14100:
+        return 0
+    elif salaire <= 28200:
+        return 14100
+    elif salaire <= 84600:
+        return salaire * 0.35  # approximation
+    else:
+        return 29400  # rente AI max échelle 44
+
 # --- CALCUL DES PRESTATIONS SELON LE CAS ---
 def calcul_prestations():
-    rente_ai = 0
+    rente_ai_p1 = 0
     rente_lpp = 0
     rente_avs = 0
     rente_veuve = 0
     rente_enfant = 0
 
     if cas.startswith("Invalidité"):
-        rente_ai = salaire * 0.6  # AI échelle 44
+        rente_ai_p1 = calcul_rente_ai_pilier1(salaire)
         if certificat_lpp:
             rente_lpp = st.number_input("Montant annuel de rente LPP (CHF)", value=12000)
         else:
             rente_lpp = capital_lpp * 0.06
-        rente_enfant = enfants * (rente_ai * 0.4)
+        rente_enfant = enfants * (rente_ai_p1 * 0.4)
 
     elif cas == "Décès - Maladie":
         if certificat_lpp:
@@ -42,14 +53,14 @@ def calcul_prestations():
             rente_lpp = capital_lpp * 0.06
             rente_veuve = rente_lpp * 0.6
             rente_enfant = enfants * (rente_lpp * 0.2)
-        rente_avs = salaire * 0.8  # approximation pleine rente veuve AVS
+        rente_avs = salaire * 0.8
         rente_enfant += enfants * (rente_avs * 0.4)
 
     elif cas == "Décès - Accident":
         salaire_assure = min(salaire, 148200)
         rente_veuve = salaire_assure * 0.4
         rente_enfant = enfants * (salaire_assure * 0.15)
-        rente_avs = salaire * 0.8  # approximation
+        rente_avs = salaire * 0.8
         rente_enfant += enfants * (rente_avs * 0.4)
         if not certificat_lpp:
             rente_lpp = capital_lpp * 0.06
@@ -59,13 +70,13 @@ def calcul_prestations():
             rente_lpp = st.number_input("Rente annuelle LPP totale (CHF)", value=24000)
         else:
             rente_lpp = capital_lpp * 0.06
-        rente_avs = 43020 if situation == "Marié(e)" else 28680  # AVS maximale annuelle
+        rente_avs = 43020 if situation == "Marié(e)" else 28680
 
-    total = rente_ai + rente_lpp + rente_avs + rente_veuve + rente_enfant
-    return total, rente_ai, rente_lpp, rente_avs, rente_veuve, rente_enfant
+    total = rente_ai_p1 + rente_lpp + rente_avs + rente_veuve + rente_enfant
+    return total, rente_ai_p1, rente_lpp, rente_avs, rente_veuve, rente_enfant
 
 # --- CALCUL ---
-total_prestations, rente_ai, rente_lpp, rente_avs, rente_veuve, rente_enfant = calcul_prestations()
+total_prestations, rente_ai_p1, rente_lpp, rente_avs, rente_veuve, rente_enfant = calcul_prestations()
 lacune = max(0, besoin_client - total_prestations)
 
 # --- AFFICHAGE DES RÉSULTATS ---
@@ -86,8 +97,8 @@ st.plotly_chart(fig)
 
 # --- DÉTAIL DES COMPOSANTES ---
 st.subheader("📊 Détail des prestations")
-st.write(f"**Rente AI :** CHF {rente_ai:,.0f}")
-st.write(f"**Rente LPP :** CHF {rente_lpp:,.0f}")
+st.write(f"**Rente AI (1er pilier, échelle 44) :** CHF {rente_ai_p1:,.0f}")
+st.write(f"**Rente LPP (2e pilier) :** CHF {rente_lpp:,.0f}")
 st.write(f"**Rente AVS :** CHF {rente_avs:,.0f}")
 st.write(f"**Rente de veuve :** CHF {rente_veuve:,.0f}")
 st.write(f"**Rente enfant :** CHF {rente_enfant:,.0f}")
