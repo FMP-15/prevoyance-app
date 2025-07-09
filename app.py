@@ -109,12 +109,14 @@ st.header("3️⃣ Visualisation graphique annuelle jusqu'à la retraite")
 
 y_ai = [rente_ai_p1] * nb_annees_restantes
 y_lpp = [rente_lpp] * nb_annees_restantes
-y_lacune = [max(0, besoin_client - (rente_ai_p1 + rente_lpp))] * nb_annees_restantes
+y_enfant = [rente_enfant] * nb_annees_restantes
+y_lacune = [max(0, besoin_client - (rente_ai_p1 + rente_lpp + rente_enfant))] * nb_annees_restantes
 y_total = [besoin_client] * nb_annees_restantes
 
 fig = go.Figure()
 fig.add_trace(go.Bar(name="AI (1er pilier)", x=liste_annees, y=y_ai))
 fig.add_trace(go.Bar(name="LPP (2e pilier)", x=liste_annees, y=y_lpp))
+fig.add_trace(go.Bar(name="Rente enfant (AI + LPP)", x=liste_annees, y=y_enfant))
 fig.add_trace(go.Bar(name="Lacune", x=liste_annees, y=y_lacune))
 fig.add_trace(go.Scatter(name="Besoin annuel", x=liste_annees, y=y_total, mode="lines", line=dict(color="black", dash="dash")))
 
