@@ -104,28 +104,22 @@ st.metric("Besoin du client", f"CHF {besoin_client:,.0f}")
 st.metric("Prestations estimées", f"CHF {total_prestations:,.0f}")
 st.metric("Lacune de couverture", f"CHF {lacune:,.0f}", delta_color="inverse")
 
-# --- NOUVEAU GRAPHIQUE ANNUEL ---
-st.header("3️⃣ Visualisation graphique annuelle jusqu'à la retraite")
-
-y_ai = [rente_ai_p1] * nb_annees_restantes
-y_lpp = [rente_lpp] * nb_annees_restantes
-y_enfant = [rente_enfant] * nb_annees_restantes
-y_lacune = [max(0, besoin_client - (rente_ai_p1 + rente_lpp + rente_enfant))] * nb_annees_restantes
-y_total = [besoin_client] * nb_annees_restantes
+# --- VISUALISATION EN BLOC ---
+st.header("3️⃣ Visualisation synthétique")
 
 fig = go.Figure()
-fig.add_trace(go.Bar(name="AI (1er pilier)", x=liste_annees, y=y_ai))
-fig.add_trace(go.Bar(name="LPP (2e pilier)", x=liste_annees, y=y_lpp))
-fig.add_trace(go.Bar(name="Rente enfant (AI + LPP)", x=liste_annees, y=y_enfant))
-fig.add_trace(go.Bar(name="Lacune", x=liste_annees, y=y_lacune))
-fig.add_trace(go.Scatter(name="Besoin annuel", x=liste_annees, y=y_total, mode="lines", line=dict(color="black", dash="dash")))
+fig.add_trace(go.Bar(name="Rente AI (1er pilier)", x=["Revenu annuel"], y=[rente_ai_p1]))
+fig.add_trace(go.Bar(name="Rente AVS", x=["Revenu annuel"], y=[rente_avs]))
+fig.add_trace(go.Bar(name="Rente LPP (2e pilier)", x=["Revenu annuel"], y=[rente_lpp]))
+fig.add_trace(go.Bar(name="Rente enfant (AI/LPP)", x=["Revenu annuel"], y=[rente_enfant]))
+fig.add_trace(go.Bar(name="Rente veuve", x=["Revenu annuel"], y=[rente_veuve]))
+fig.add_trace(go.Bar(name="Lacune", x=["Revenu annuel"], y=[lacune]))
 
 fig.update_layout(
     barmode='stack',
-    title="Projection annuelle des rentes jusqu'à la retraite",
-    xaxis_title="Années",
+    title="Composition du revenu annuel par source de prévoyance",
     yaxis_title="Montants annuels (CHF)",
-    legend_title="Sources de prestations"
+    showlegend=True
 )
 
 st.plotly_chart(fig, use_container_width=True)
